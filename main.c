@@ -560,6 +560,23 @@ int main(int argc, char **argv) {
                 refreshDisplay(UPDATE);
                 continue;
             }
+            if(editing && enteredChar == 22) {
+                while(editingCursorPositionY < winsize.ws_row) {
+                    downArrow(-1);
+                }
+                downArrow(-1);
+                continue;
+            }
+            if(editing && enteredChar == 25) {
+                while(editingCursorPositionY > 1) {
+                    upArrow(-1);
+                }
+                upArrow(-1);
+                while(editingCursorPositionY > 1) {
+                    upArrow(-1);
+                }
+                continue;
+            }
             if(enteredChar == 10 && cooked) {
                 refreshDisplay(UPDATE);
             }
