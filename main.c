@@ -30,7 +30,8 @@ const int MAX_CONSOLE_TEXT = 10000;
 static volatile int appRunning = 1;
 static struct winsize winsize;
 static int cooked = 0;
-static int editing;
+static int editing = 0;
+static int savePrompt = 0;
 static int readyToRender = 1;
 
 static char enteredChar = 0;
@@ -46,6 +47,7 @@ static FILE *fpClone = NULL;
 
 static char *newFileString;
 static int newFileStrOffset = -1;
+static int editingPageOffset = 0;
 
 struct dirent *pDirent;
 struct dirent *selectedDirent;
@@ -187,7 +189,7 @@ void refreshDisplay(int type) {
             printf("\n");
         }
     } else {
-        int i = 0;
+        int i = editingPageOffset;
         for(int h=0; h<winsize.ws_row - rowOffset; h++) {
             int newline = 0;
             int tabOccured = 0;
@@ -272,8 +274,6 @@ void downArrow(int enteredValue) {
             ++newFileStrOffset;
         }
         
-
-        
         if(newFileString[newFileStrOffset] == '\0') {
             --newFileStrOffset;
             editingCursorPositionX = ((i+editingCursorPositionX) % winsize.ws_col) - 1;
@@ -286,17 +286,26 @@ void downArrow(int enteredValue) {
             ++newFileStrOffset;
         }
         i = 1;
-        ++editingCursorPositionY;
-        while (i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
+        int j = 0;
+        while(i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
             if(newFileString[newFileStrOffset] == 9) {
                 i += 3;
             }
             ++i;
+            ++j;
             ++newFileStrOffset;
         }
 
         --newFileStrOffset;
+        ++editingCursorPositionY;
         editingCursorPositionX = i;
+        if(editingCursorPositionY > winsize.ws_row) {
+            editingCursorPositionY = 1;
+            editingPageOffset = newFileStrOffset - j + 1;
+            newFileStrOffset -= j;
+            editingCursorPositionX = 1;
+            refreshDisplay(UPDATE);
+        }
         printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
     }
 }
@@ -457,11 +466,24 @@ void leftArrow(enteredValue) {
     }
 }
 
+void cancelHandler(int x) {
+    if(savePrompt) {
+        savePrompt = 0;
+        system("/bin/stty raw");
+        cooked = 0;
+        refreshDisplay(INIT);
+        refreshDisplay(UPDATE);
+        printf("%s", ANSI_SHOW_CURSOR);
+        fputc(132, stdin);
+    }
+}
+
 int main(int argc, char **argv) {
     
     printf(ANSI_COLOR_GREEN);
     system("/bin/stty raw");
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &winsize);
+    signal(SIGINT, cancelHandler);
     
     consoleText = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
     currCloneFilePath = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
@@ -479,6 +501,8 @@ int main(int argc, char **argv) {
     refreshDisplay(INIT);
     refreshDisplay(UPDATE);
     
+    char newFilename[1024];
+    int newFilenamePos = 0;
     int lastEnteredChar = 0;
     int lastlastEnteredChar = 0;
     while ((enteredChar = fgetc(stdin)) != EOF && appRunning) {
@@ -488,8 +512,23 @@ int main(int argc, char **argv) {
                 appRunning = 0;
                 break;
             }
-            if(editing && enteredChar == 15) {
+            if(savePrompt && enteredChar != 10) {
+                newFilename[newFilenamePos++] = enteredChar;
+                newFilename[newFilenamePos] = '\0';
+                continue;
+            }
+            if(savePrompt && enteredChar == 10) {
+                system("/bin/stty raw");
+                cooked = 0;
+                savePrompt = 0;
+                newFilenamePos = 0;
                 editing = 0;
+                char filePath[sizeof(cwd)];
+                memset(filePath, 0, sizeof(filePath));
+                strcpy(filePath, cwd);
+                strcat(filePath, "/");
+                strcpy(currCloneFilePath, filePath);
+                strcat(currCloneFilePath, newFilename);
                 fpClone = fopen(currCloneFilePath, "w+");
                 int val;
                 int i = 0;
@@ -498,6 +537,14 @@ int main(int argc, char **argv) {
                 }
                 fclose(fpClone);
                 refreshDisplay(UPDATE);
+            }
+            if(editing && enteredChar == 15) {
+                savePrompt = 1;
+                system ("/bin/stty cooked");
+                cooked = 1;
+                refreshDisplay(UPDATE);
+                refreshDisplay(UPDATE);
+                printf("Hit CTRL-C to Cancel. Save as (%s): ", selectedDirent->d_name);
                 continue;
             }
             if(editing && enteredChar == 24) {
@@ -563,14 +610,13 @@ int main(int argc, char **argv) {
                             --editingCursorPositionY;
                             if(newFileString[newFileStrOffset - 1] == ' ') {
                                 removeChar(newFileString, newFileStrOffset);
-                                removeChar(newFileString, newFileStrOffset - 1);//needs work
+                                removeChar(newFileString, newFileStrOffset - 1);
                                 ++editingCursorPositionX;
                             } else {
                                 removeChar(newFileString, newFileStrOffset);
                             }
                             upLine();
                             --newFileStrOffset;
-                            //++editingCursorPositionX;
                         } else if(newFileString[newFileStrOffset] == 9) {
                             editingCursorPositionX -= 4;
                             removeChar(newFileString, newFileStrOffset);
