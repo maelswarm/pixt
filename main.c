@@ -47,7 +47,8 @@ static FILE *fpClone = NULL;
 
 static char *newFileString;
 static int newFileStrOffset = -1;
-static int editingPageOffset = 0;
+static int *editingPageOffset;
+static int currEditingPageOffset = 0;
 
 struct dirent *pDirent;
 struct dirent *selectedDirent;
@@ -189,7 +190,7 @@ void refreshDisplay(int type) {
             printf("\n");
         }
     } else {
-        int i = editingPageOffset;
+        int i = editingPageOffset[currEditingPageOffset];
         for(int h=0; h<winsize.ws_row - rowOffset; h++) {
             int newline = 0;
             int tabOccured = 0;
@@ -301,7 +302,7 @@ void downArrow(int enteredValue) {
         editingCursorPositionX = i;
         if(editingCursorPositionY > winsize.ws_row) {
             editingCursorPositionY = 1;
-            editingPageOffset = newFileStrOffset - j + 1;
+            editingPageOffset[++currEditingPageOffset] = newFileStrOffset - j + 1;
             newFileStrOffset -= j;
             editingCursorPositionX = 1;
             refreshDisplay(UPDATE);
@@ -325,52 +326,55 @@ void upArrow(int enteredValue) {
         }
         refreshDisplay(UPDATE);
     } else {
-        if(editingCursorPositionY > 1) {
-            int i = 0;
-            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
-                if (i >= winsize.ws_col - 1) {
-                    --newFileStrOffset;
-                    --editingCursorPositionY;
-                    printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
-                    return;
-                }
-                if (newFileString[newFileStrOffset] == '\t') {
-                    i+=4;
-                } else {
-                    i++;
-                }
+        int i = 0;
+        while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
+            if (i >= winsize.ws_col - 1) {
                 --newFileStrOffset;
+                --editingCursorPositionY;
+                printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                return;
             }
-            if(newFileString[newFileStrOffset] == '\n') {
-                --newFileStrOffset;
-            }
-            
-            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
-                --newFileStrOffset;
-            }
-            
-            ++newFileStrOffset;
-            
-            i = 1;
-            while(i < editingCursorPositionX) {
-                if(newFileString[newFileStrOffset] == 10) {
-                    break;
-                } else if(newFileString[newFileStrOffset] == '\0') {
-                    break;
-                } else if(newFileString[newFileStrOffset] == 9) {
-                    i+=4;
-                    ++newFileStrOffset;
-                } else {
-                    i++;
-                    ++newFileStrOffset;
-                }
+            if (newFileString[newFileStrOffset] == '\t') {
+                i+=4;
+            } else {
+                i++;
             }
             --newFileStrOffset;
-            editingCursorPositionX = i;
-            --editingCursorPositionY;
         }
-        printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+        if(newFileString[newFileStrOffset] == '\n') {
+            --newFileStrOffset;
+        }
+        
+        while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
+            --newFileStrOffset;
+        }
+        
+        ++newFileStrOffset;
+        
+        i = 1;
+        while(i < editingCursorPositionX) {
+            if(newFileString[newFileStrOffset] == 10) {
+                break;
+            } else if(newFileString[newFileStrOffset] == '\0') {
+                break;
+            } else if(newFileString[newFileStrOffset] == 9) {
+                i+=4;
+                ++newFileStrOffset;
+            } else {
+                i++;
+                ++newFileStrOffset;
+            }
+        }
+        --newFileStrOffset;
+        editingCursorPositionX = i;
+        --editingCursorPositionY;
+        if(editingCursorPositionY <= 0) {
+            --currEditingPageOffset;
+            editingCursorPositionY = winsize.ws_row;
+            refreshDisplay(UPDATE);
+        }
     }
+    printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
 }
 
 void rightArrow(int enteredValue) {
@@ -488,6 +492,8 @@ int main(int argc, char **argv) {
     consoleText = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
     currCloneFilePath = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
     newFileString = (char *)malloc(1000000*sizeof(char));
+    editingPageOffset = (int *)malloc(1000000*sizeof(int));
+    editingPageOffset[0] = 0;
     
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         perror("getcwd() error");
@@ -649,6 +655,7 @@ int main(int argc, char **argv) {
     closedir (pDir);
     free(consoleText);
     free(currCloneFilePath);
+    free(editingPageOffset);
     
     return 0;
 }
