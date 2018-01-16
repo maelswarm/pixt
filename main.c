@@ -21,6 +21,8 @@
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_RESET   "\x1b[0m"
 #define ANSI_BLINK   "\x1b[5m"
+#define ANSI_HIDE_CURSOR "\e[?25l"
+#define ANSI_SHOW_CURSOR "\e[?25h"
 
 
 const int MAX_CONSOLE_TEXT = 10000;
@@ -91,6 +93,7 @@ void refreshDisplay(int type) {
     analyzeDirectory();
     
     if(type != INIT) {
+        printf("%s", ANSI_HIDE_CURSOR);
         printf("\033[%i;%iH", 1, 1);
         rewind(stdout);
         if(!cooked) {
@@ -213,6 +216,7 @@ void refreshDisplay(int type) {
         }
     }
     rewind(stdout);
+    printf("%s", ANSI_SHOW_CURSOR);
     readyToRender = 1;
 }
 
@@ -230,6 +234,134 @@ void upLine() {
         }
     }
     editingCursorPositionX = cnt;
+}
+
+void downArrow(int enteredValue) {
+    if(!editing) {
+        if(fp != NULL) {
+            fclose(fp);
+        }
+        ++cursorPosition;
+        if(cursorPosition > contentCount - 1) {
+            cursorPosition = 0;
+            ++currPage;
+            if(currPage > numOfPagesNav - 1) {
+                currPage = 0;
+            }
+        }
+        refreshDisplay(UPDATE);
+    } else {
+        int i = 0;
+        int flagWasNegative = 0;
+        if(newFileStrOffset == -1 || newFileString[newFileStrOffset] == 10) {
+            ++newFileStrOffset;
+            flagWasNegative = 1;
+        }
+        while(newFileString[newFileStrOffset] != '\n' && newFileString[newFileStrOffset] != '\0') {
+            if (i >= winsize.ws_col - 1) {
+                ++editingCursorPositionY;
+                ++newFileStrOffset;
+                printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                return;
+            }
+            if (newFileString[newFileStrOffset] == '\t') {
+                i+=4;
+            } else {
+                i++;
+            }
+            ++newFileStrOffset;
+        }
+        
+
+        
+        if(newFileString[newFileStrOffset] == '\0') {
+            --newFileStrOffset;
+            editingCursorPositionX = ((i+editingCursorPositionX) % winsize.ws_col) - 1;
+            ++editingCursorPositionY;
+            printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+            return;
+        }
+        
+        if(newFileString[newFileStrOffset] == '\n') {
+            ++newFileStrOffset;
+        }
+        i = 1;
+        ++editingCursorPositionY;
+        while (i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
+            if(newFileString[newFileStrOffset] == 9) {
+                i += 3;
+            }
+            ++i;
+            ++newFileStrOffset;
+        }
+
+        --newFileStrOffset;
+        editingCursorPositionX = i;
+        printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+    }
+}
+
+void upArrow(int enteredValue) {
+    if(!editing) {
+        if(fp != NULL) {
+            fclose(fp);
+        }
+        --cursorPosition;
+        if(cursorPosition < 0) {
+            cursorPosition = contentCount - 1;
+            --currPage;
+            if(currPage < 0) {
+                currPage = numOfPagesNav -1;
+            }
+        }
+        refreshDisplay(UPDATE);
+    } else {
+        if(editingCursorPositionY > 1) {
+            int i = 0;
+            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
+                if (i >= winsize.ws_col - 1) {
+                    --newFileStrOffset;
+                    --editingCursorPositionY;
+                    printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                    return;
+                }
+                if (newFileString[newFileStrOffset] == '\t') {
+                    i+=4;
+                } else {
+                    i++;
+                }
+                --newFileStrOffset;
+            }
+            if(newFileString[newFileStrOffset] == '\n') {
+                --newFileStrOffset;
+            }
+            
+            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
+                --newFileStrOffset;
+            }
+            
+            ++newFileStrOffset;
+            
+            i = 1;
+            while(i < editingCursorPositionX) {
+                if(newFileString[newFileStrOffset] == 10) {
+                    break;
+                } else if(newFileString[newFileStrOffset] == '\0') {
+                    break;
+                } else if(newFileString[newFileStrOffset] == 9) {
+                    i+=4;
+                    ++newFileStrOffset;
+                } else {
+                    i++;
+                    ++newFileStrOffset;
+                }
+            }
+            --newFileStrOffset;
+            editingCursorPositionX = i;
+            --editingCursorPositionY;
+        }
+        printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+    }
 }
 
 void rightArrow(int enteredValue) {
@@ -270,7 +402,12 @@ void rightArrow(int enteredValue) {
             } else if(newFileString[newFileStrOffset] == 9) {
                 editingCursorPositionX += 4;
             } else {
-                ++editingCursorPositionX;
+                if(editingCursorPositionX <= winsize.ws_col) {
+                    ++editingCursorPositionX;
+                } else {
+                    editingCursorPositionX = 2;
+                    ++editingCursorPositionY;
+                }
             }
             //printf("%c\n\n", newFileString[newFileStrOffset]);
             printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
@@ -404,91 +541,9 @@ int main(int argc, char **argv) {
                 refreshDisplay(UPDATE);
             } else if(!cooked) {
                 if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 65) { //up
-                    if(!editing) {
-                        if(fp != NULL) {
-                            fclose(fp);
-                        }
-                        --cursorPosition;
-                        if(cursorPosition < 0) {
-                            cursorPosition = contentCount - 1;
-                            --currPage;
-                            if(currPage < 0) {
-                                currPage = numOfPagesNav -1;
-                            }
-                        }
-                        refreshDisplay(UPDATE);
-                    } else {
-                        if(editingCursorPositionY > 1) {
-                            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
-                                --newFileStrOffset;
-                            }
-                            if(newFileString[newFileStrOffset] == '\n') {
-                                --newFileStrOffset;
-                            }
-
-                            while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
-                                --newFileStrOffset;
-                            }
-                            int i = 1;
-                            int newOffset = 0;
-                            while(i < editingCursorPositionX) {
-                                if(newFileString[newFileStrOffset + i] == 10) {
-                                    break;
-                                } else if(newFileString[newFileStrOffset + i] == '\0') {
-                                    break;
-                                } else if(newFileString[newFileStrOffset + i] == 9) {
-                                    i+=4;
-                                    newOffset++;
-                                } else {
-                                    i++;
-                                    newOffset++;
-                                }
-                            }
-                            
-                            newFileStrOffset += newOffset;
-                            editingCursorPositionX = i;
-                            --editingCursorPositionY;
-                        }
-                        printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
-                    }
+                    upArrow(-1);
                 } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 66) { //down
-                    if(!editing) {
-                        if(fp != NULL) {
-                            fclose(fp);
-                        }
-                        ++cursorPosition;
-                        if(cursorPosition > contentCount - 1) {
-                            cursorPosition = 0;
-                            ++currPage;
-                            if(currPage > numOfPagesNav - 1) {
-                                currPage = 0;
-                            }
-                        }
-                        refreshDisplay(UPDATE);
-                    } else {
-                        while(newFileString[newFileStrOffset] != '\n' && newFileString[newFileStrOffset] != '\0') {
-                            ++newFileStrOffset;
-                        }
-                        if(newFileString[newFileStrOffset] == '\0') {
-                            
-                        } else {
-                            if(newFileString[newFileStrOffset] == '\n') {
-                                ++newFileStrOffset;
-                            }
-                            int i = 1;
-                            ++editingCursorPositionY;
-                            while (i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
-                                if(newFileString[newFileStrOffset] == 9) {
-                                    i += 3;
-                                }
-                                ++i;
-                                ++newFileStrOffset;
-                            }
-                            --newFileStrOffset;
-                            editingCursorPositionX = i;
-                        }
-                        printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
-                    }
+                    downArrow(-1);
                 } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 67) { //right
                     rightArrow(-1);
                 } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 68) { //left
@@ -526,11 +581,14 @@ int main(int argc, char **argv) {
                             --newFileStrOffset;
                         }
                         
-                        
                         refreshDisplay(UPDATE);
                         
                         printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                     }
+                } else if(enteredChar == 9) {
+                    appendChars(newFileString, "\t", newFileStrOffset+1);
+                    refreshDisplay(UPDATE);
+                    rightArrow(enteredChar);
                 }
             }
             lastlastEnteredChar = lastEnteredChar;
