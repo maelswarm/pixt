@@ -190,7 +190,7 @@ void refreshDisplay(int type) {
             printf("\n");
         }
     } else {
-        int i = editingPageOffset[currEditingPageOffset];
+        int i = editingPageOffset[0];
         for(int h=0; h<winsize.ws_row - rowOffset; h++) {
             int newline = 0;
             int tabOccured = 0;
@@ -220,6 +220,7 @@ void refreshDisplay(int type) {
     }
     rewind(stdout);
     printf("%s", ANSI_SHOW_CURSOR);
+    //ioctl(STDOUT_FILENO, TIOCGWINSZ, &winsize);
     readyToRender = 1;
 }
 
@@ -260,13 +261,27 @@ void downArrow(int enteredValue) {
             ++newFileStrOffset;
             flagWasNegative = 1;
         }
+        
         while(newFileString[newFileStrOffset] != '\n' && newFileString[newFileStrOffset] != '\0') {
             if (i >= winsize.ws_col - 1) {
                 ++editingCursorPositionY;
                 ++newFileStrOffset;
+                if(flagWasNegative) {
+                    --newFileStrOffset;
+                }
+                if(editingCursorPositionY > winsize.ws_row) {
+                    --editingCursorPositionY;
+                    while(newFileString[editingPageOffset[0]] != '\n' && newFileString[editingPageOffset[0]] != '\0') {
+                        ++editingPageOffset[0];
+                    }
+                    ++editingPageOffset[0];
+                    refreshDisplay(UPDATE);
+                }
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                //printf("jump");
                 return;
             }
+            
             if (newFileString[newFileStrOffset] == '\t') {
                 i+=4;
             } else {
@@ -277,7 +292,6 @@ void downArrow(int enteredValue) {
         
         if(newFileString[newFileStrOffset] == '\0') {
             --newFileStrOffset;
-            editingCursorPositionX = ((i+editingCursorPositionX) % winsize.ws_col) - 1;
             ++editingCursorPositionY;
             printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
             return;
@@ -286,25 +300,42 @@ void downArrow(int enteredValue) {
         if(newFileString[newFileStrOffset] == '\n') {
             ++newFileStrOffset;
         }
-        i = 1;
-        int j = 0;
-        while(i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
-            if(newFileString[newFileStrOffset] == 9) {
-                i += 3;
+        
+        if(i + editingCursorPositionX > winsize.ws_col) {
+            editingCursorPositionX = ((i+editingCursorPositionX) % winsize.ws_col) - 1;
+            ++editingCursorPositionY;
+            newFileStrOffset-=2;
+        } else {
+            i = 1;
+            int j = 0;
+            while(i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
+                if(newFileString[newFileStrOffset] == 9) {
+                    i += 3;
+                }
+                ++i;
+                ++j;
+                ++newFileStrOffset;
             }
-            ++i;
-            ++j;
-            ++newFileStrOffset;
+            --newFileStrOffset;
+            ++editingCursorPositionY;
+            editingCursorPositionX = i;
         }
-
-        --newFileStrOffset;
-        ++editingCursorPositionY;
-        editingCursorPositionX = i;
         if(editingCursorPositionY > winsize.ws_row) {
-            editingCursorPositionY = 1;
-            editingPageOffset[++currEditingPageOffset] = newFileStrOffset - j + 1;
-            newFileStrOffset -= j;
-            editingCursorPositionX = 1;
+            --editingCursorPositionY;
+            int q = 0;
+            int p = 0;
+            while(newFileString[editingPageOffset[0]+q] != '\n' && newFileString[editingPageOffset[0]+q] != '\0') {
+                if (q >= winsize.ws_col - 1) {
+                    p++;
+                    break;
+                }
+                if(newFileString[editingPageOffset[0]+q] == 9) {
+                    q+=3;
+                }
+                ++q;
+                p++;
+            }
+            editingPageOffset[0] += (p+1);
             refreshDisplay(UPDATE);
         }
         printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
@@ -331,6 +362,20 @@ void upArrow(int enteredValue) {
             if (i >= winsize.ws_col - 1) {
                 --newFileStrOffset;
                 --editingCursorPositionY;
+                if(editingCursorPositionY <= 0) {
+                    int j = 0;
+                    i = 1;
+                    while(editingPageOffset[0] - i > -1 && newFileString[editingPageOffset[0]-i] != 10) {
+                        if(newFileString[editingPageOffset[0] - i] == 9) {
+                            j+=3;
+                        }
+                        j++;
+                        i++;
+                    }
+                    
+                    editingPageOffset[0] -= winsize.ws_col;
+                    refreshDisplay(UPDATE);
+                }
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 return;
             }
@@ -345,11 +390,20 @@ void upArrow(int enteredValue) {
             --newFileStrOffset;
         }
         
+        int wrapFlag = 0;
+        i = 0;
         while(newFileStrOffset > -1 && newFileString[newFileStrOffset] != 10) {
+            if (i >= winsize.ws_col - 1) {
+                wrapFlag = 1;
+            }
             --newFileStrOffset;
+            i++;
         }
-        
         ++newFileStrOffset;
+        
+        if(wrapFlag) {
+            editingCursorPositionX = (i+1)%winsize.ws_col;
+        }
         
         i = 1;
         while(i < editingCursorPositionX) {
@@ -365,12 +419,72 @@ void upArrow(int enteredValue) {
                 ++newFileStrOffset;
             }
         }
+        if(wrapFlag) {
+            newFileStrOffset+=winsize.ws_col;
+        }
         --newFileStrOffset;
         editingCursorPositionX = i;
         --editingCursorPositionY;
-        if(editingCursorPositionY <= 0) {
-            --currEditingPageOffset;
-            editingCursorPositionY = winsize.ws_row;
+        if(editingCursorPositionY < 1) {
+            if(wrapFlag) {
+                ++editingCursorPositionY;
+                i = 0;
+                int j = 0;
+                if(newFileString[editingPageOffset[0] - j] == '\n') {
+                    j++;
+                    i++;
+                }
+                while(editingPageOffset[0] - j > -1 && newFileString[editingPageOffset[0] - j] != 10) {
+                    if(newFileString[editingPageOffset[0] - j] == 9) {
+                        i+=3;
+                    }
+                    j++;
+                    i++;
+                }
+                if(newFileString[editingPageOffset[0] - j] == '\n') {
+                    j++;
+                    i++;
+                }
+                while(editingPageOffset[0] - j > -1 && newFileString[editingPageOffset[0] - j] != 10) {
+                    if(newFileString[editingPageOffset[0] - j] == 9) {
+                        i+=3;
+                    }
+                    j++;
+                    i++;
+                }
+                editingCursorPositionX = (i-1)%winsize.ws_col;
+                editingPageOffset[0]-=editingCursorPositionX;
+            } else {
+                ++editingCursorPositionY;
+                if(newFileString[editingPageOffset[0]] == '\n') {
+                    --editingPageOffset[0];
+                }
+                while(editingPageOffset[0] > -1 && newFileString[editingPageOffset[0]] != 10) {
+                    --editingPageOffset[0];
+                }
+                if(newFileString[editingPageOffset[0]] == '\n') {
+                    --editingPageOffset[0];
+                }
+                while(editingPageOffset[0] > -1 && newFileString[editingPageOffset[0]] != 10) {
+                    --editingPageOffset[0];
+                }
+                ++editingPageOffset[0];
+                i = 0;
+                int j = 0;
+                while(i < editingCursorPositionX) {
+                    if(newFileString[editingPageOffset[0] + j] == 10) {
+                        break;
+                    } else if(newFileString[editingPageOffset[0] + j] == 9) {
+                        i+=4;
+                        ++j;
+                    } else {
+                        ++i;
+                        ++j;
+                    }
+                }
+                
+                editingCursorPositionX = i+1;
+            }
             refreshDisplay(UPDATE);
         }
     }
