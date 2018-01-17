@@ -196,7 +196,6 @@ void refreshDisplay(int type) {
             int tabOccured = 0;
             for(int w=0; w<winsize.ws_col; w++) {
                 int val;
-                fpOffset = ftell(fp);
                 if(tabOccured || newline) {
                     printf(" ");
                 } else {
@@ -697,6 +696,7 @@ int main(int argc, char **argv) {
     consoleText = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
     currCloneFilePath = (char *)malloc(MAX_CONSOLE_TEXT*sizeof(char));
     newFileString = (char *)malloc(1000000*sizeof(char));
+    memset(newFileString, '\0', 1000000);
     editingPageOffset = (int *)malloc(1000000*sizeof(int));
     editingPageOffset[0] = 0;
     
@@ -755,7 +755,11 @@ int main(int argc, char **argv) {
                 cooked = 1;
                 refreshDisplay(UPDATE);
                 refreshDisplay(UPDATE);
-                printf("Hit CTRL-C to Cancel. Save as (%s): ", selectedDirent->d_name);
+                if (fp != NULL) {
+                    printf("Hit CTRL-C to Cancel. Save as (%s): ", selectedDirent->d_name);
+                } else {
+                    printf("Hit CTRL-C to Cancel. Save as: ");
+                }
                 continue;
             }
             if(editing && enteredChar == 24) {
@@ -809,18 +813,17 @@ int main(int argc, char **argv) {
                     newFileString[i] = '\0';
                     rewind(fp);
                     refreshDisplay(UPDATE);
+                    editingCursorPositionX = 1;
+                    editingCursorPositionY = 1;
                     printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 }
-            } else if((lastEnteredChar == 14 && enteredChar == 13) || (cooked && lastEnteredChar == 14 && enteredChar == 10)) {
-                if(cooked) {
-                    system("/bin/stty raw");
-                    cooked = 0;
-                } else {
-                    system ("/bin/stty cooked");
-                    cooked = 1;
-                }
+            } else if(enteredChar == 14 && !cooked && !editing) {
+                editing = 1;
                 refreshDisplay(UPDATE);
-                refreshDisplay(UPDATE);
+                editingCursorPositionX = 1;
+                editingCursorPositionY = 1;
+                printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                
             } else if(!cooked) {
                 if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 65) { //up
                     upArrow(-1);
