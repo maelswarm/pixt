@@ -223,22 +223,6 @@ void refreshDisplay(int type) {
     readyToRender = 1;
 }
 
-void upLine() {
-    int xOffset = 0;
-    int i = 1;
-    int cnt = 1;
-    while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -1) {
-        if(newFileString[newFileStrOffset - i] == 9) {
-            cnt += 4;
-            i++;
-        } else {
-            cnt++;
-            i++;
-        }
-    }
-    editingCursorPositionX = cnt;
-}
-
 void downArrow(int enteredValue) {
     if(!editing) {
         if(fp != NULL) {
@@ -635,7 +619,18 @@ void leftArrow(enteredValue) {
                     if (newFileString[editingPageOffset[0]] == 10) {
                         ++editingPageOffset[0];
                     }
-                    upLine();
+                    int i = 1;
+                    int cnt = 1;
+                    while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2) {
+                        if(newFileString[newFileStrOffset - i] == 9) {
+                            cnt += 4;
+                            i++;
+                        } else {
+                            cnt++;
+                            i++;
+                        }
+                    }
+                    editingCursorPositionX = cnt;
                     refreshDisplay(UPDATE);
                 } else {
                     --editingCursorPositionY;
