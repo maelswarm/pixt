@@ -596,21 +596,34 @@ void leftArrow(enteredValue) {
         } else {
             if (editingCursorPositionY == 1 && editingCursorPositionX == 1) {
                 int i = 0;
+                int j = 0;
                 --editingPageOffset[0];
                 if(newFileString[editingPageOffset[0]] == 10) {
                     --editingPageOffset[0];
                 }
-                while(newFileString[editingPageOffset[0]] != 10 && newFileString[editingPageOffset[0]] != '\0' && i<winsize.ws_col) {
-                    if(newFileString[editingPageOffset[0]] == 9) {
+                while(newFileString[editingPageOffset[0] - j] != 10 && newFileString[editingPageOffset[0] - j] != '\0') {
+                    if(newFileString[editingPageOffset[0] - j] == 9) {
                         i+=3;
                     }
-                    --editingPageOffset[0];
                     i++;
+                    j++;
                 }
-                ++editingPageOffset[0];
+                
                 --newFileStrOffset;
                 //editingCursorPositionX = winsize.ws_col;
-                editingCursorPositionX = i+1;
+                if(i%winsize.ws_col != 0) {
+                    editingCursorPositionX = (i%winsize.ws_col)+1;
+                    for(int x=0; x<editingCursorPositionX-1; x++) {
+                        --editingPageOffset[0];
+                    }
+                } else {
+                    editingCursorPositionX = winsize.ws_col+1;
+                    for(int x=0; x<j; x++) {
+                        --editingPageOffset[0];
+                    }
+                    ++newFileStrOffset;
+                }
+                ++editingPageOffset[0];
                 refreshDisplay(UPDATE);
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 return;
@@ -637,7 +650,12 @@ void leftArrow(enteredValue) {
             } else if(newFileString[newFileStrOffset] == 9 || enteredValue == 700) {
                 editingCursorPositionX -= 4;
             } else {
-                --editingCursorPositionX;
+                if(editingCursorPositionX <= 1) {
+                    --editingCursorPositionY;
+                    upLine();
+                } else {
+                    --editingCursorPositionX;
+                }
             }
             --newFileStrOffset;
             //printf("%c", newFileString[newFileStrOffset]);
