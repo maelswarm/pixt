@@ -469,7 +469,7 @@ void upArrow(int enteredValue) {
                     --editingPageOffset[0];
                 }
                 ++editingPageOffset[0];
-                i = 0;
+                i = 1;
                 int j = 0;
                 while(i < editingCursorPositionX) {
                     if(newFileString[editingPageOffset[0] + j] == 10) {
@@ -483,7 +483,7 @@ void upArrow(int enteredValue) {
                     }
                 }
                 
-                editingCursorPositionX = i+1;
+                editingCursorPositionX = i;
             }
             refreshDisplay(UPDATE);
         }
@@ -525,15 +525,40 @@ void rightArrow(int enteredValue) {
             ++newFileStrOffset;
             if(newFileString[newFileStrOffset] == 10 || enteredValue == 10) {
                 editingCursorPositionX = 1;
-                ++editingCursorPositionY;
+                if(editingCursorPositionY < winsize.ws_row) {
+                    ++editingCursorPositionY;
+                } else {
+                    while(newFileString[editingPageOffset[0]] != 10 && newFileString[editingPageOffset[0]] != '\0') {
+                        ++editingPageOffset[0];
+                    }
+                    if (newFileString[editingPageOffset[0]] == 10) {
+                        ++editingPageOffset[0];
+                    }
+                    refreshDisplay(UPDATE);
+                }
             } else if(newFileString[newFileStrOffset] == 9) {
                 editingCursorPositionX += 4;
             } else {
                 if(editingCursorPositionX <= winsize.ws_col) {
                     ++editingCursorPositionX;
                 } else {
-                    editingCursorPositionX = 2;
-                    ++editingCursorPositionY;
+                    if(editingCursorPositionY < winsize.ws_row) {
+                        editingCursorPositionX = 1;
+                        editingCursorPositionY++;
+                        --newFileStrOffset;
+                    } else {
+                        int i = 0;
+                        while(newFileString[newFileStrOffset + i] != 10 && newFileString[newFileStrOffset + i] != '\0' && i<winsize.ws_col) {
+                            if(newFileString[newFileStrOffset + i] == 9) {
+                                i+=3;
+                            }
+                            i++;
+                            editingPageOffset[0]++;
+                        }
+                        editingCursorPositionX = 1;
+                        refreshDisplay(UPDATE);
+                        --newFileStrOffset;
+                    }
                 }
             }
             //printf("%c\n\n", newFileString[newFileStrOffset]);
@@ -569,9 +594,46 @@ void leftArrow(enteredValue) {
         if(newFileStrOffset - 1 < -1) {
             
         } else {
+            if (editingCursorPositionY == 1 && editingCursorPositionX == 1) {
+                int i = 0;
+                --editingPageOffset[0];
+                if(newFileString[editingPageOffset[0]] == 10) {
+                    --editingPageOffset[0];
+                }
+                while(newFileString[editingPageOffset[0]] != 10 && newFileString[editingPageOffset[0]] != '\0' && i<winsize.ws_col) {
+                    if(newFileString[editingPageOffset[0]] == 9) {
+                        i+=3;
+                    }
+                    --editingPageOffset[0];
+                    i++;
+                }
+                ++editingPageOffset[0];
+                --newFileStrOffset;
+                //editingCursorPositionX = winsize.ws_col;
+                editingCursorPositionX = i+1;
+                refreshDisplay(UPDATE);
+                printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
+                return;
+            }
+            
             if((newFileString[newFileStrOffset] == 10 && enteredValue != 127) || enteredValue == 600) {
-                --editingCursorPositionY;
-                upLine();
+                if(editingCursorPositionY == 1) {
+                    --editingPageOffset[0];
+                    if (newFileString[editingPageOffset[0]] == 10) {
+                        --editingPageOffset[0];
+                    }
+                    while(newFileString[editingPageOffset[0]] != 10 && newFileString[editingPageOffset[0]] != '\0') {
+                        --editingPageOffset[0];
+                    }
+                    if (newFileString[editingPageOffset[0]] == 10) {
+                        ++editingPageOffset[0];
+                    }
+                    upLine();
+                    refreshDisplay(UPDATE);
+                } else {
+                    --editingCursorPositionY;
+                    upLine();
+                }
             } else if(newFileString[newFileStrOffset] == 9 || enteredValue == 700) {
                 editingCursorPositionX -= 4;
             } else {
