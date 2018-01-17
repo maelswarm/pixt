@@ -664,6 +664,7 @@ void leftArrow(enteredValue) {
                     --editingCursorPositionY;
                     editingCursorPositionX = i;
                     --newFileStrOffset;
+                    --newFileStrOffset;
                 } else {
                     --editingCursorPositionX;
                     --newFileStrOffset;
