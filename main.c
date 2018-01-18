@@ -248,6 +248,9 @@ void downArrow(int enteredValue) {
         while(newFileString[newFileStrOffset] != '\n' && newFileString[newFileStrOffset] != '\0') {
             if (i > winsize.ws_col) {
                 ++editingCursorPositionY;
+                if(flagWasNegative) {
+                    --newFileStrOffset;
+                }
                 --newFileStrOffset;
                 if(editingCursorPositionY > winsize.ws_row) {
                     ++newFileStrOffset;
@@ -276,6 +279,7 @@ void downArrow(int enteredValue) {
         }
         
         if(newFileString[newFileStrOffset] == '\0') {
+            newFileStrOffset -= i;
             return;
         }
         
@@ -739,7 +743,30 @@ int main(int argc, char **argv) {
                 int val;
                 int i = 0;
                 while((val = newFileString[i++]) != '\0') {
-                    fputc(val, fpClone);
+                    int val2, val3, val4;
+                    if(val == ' ') {
+                        if((val2 = newFileString[i++]) == ' ') {
+                            if((val3 = newFileString[i++]) == ' ') {
+                                if((val4 = newFileString[i++]) == ' ') {
+                                    fputc('\t', fpClone);
+                                } else {
+                                    fputc(val, fpClone);
+                                    fputc(val2, fpClone);
+                                    fputc(val3, fpClone);
+                                    fputc(val4, fpClone);
+                                }
+                            } else {
+                                fputc(val, fpClone);
+                                fputc(val2, fpClone);
+                                fputc(val3, fpClone);
+                            }
+                        } else {
+                            fputc(val, fpClone);
+                            fputc(val2, fpClone);
+                        }
+                    } else {
+                        fputc(val, fpClone);
+                    }
                 }
                 fclose(fpClone);
                 refreshDisplay(UPDATE);
@@ -801,6 +828,12 @@ int main(int argc, char **argv) {
                             --j;
                             newFileString[i-j] = val;
                             i = i - j + 1;
+                        } else if(val == 9) {
+                            newFileString[i] = ' ';
+                            newFileString[i+1] = ' ';
+                            newFileString[i+2] = ' ';
+                            newFileString[i+3] = ' ';
+                            i+=4;
                         } else {
                             newFileString[i++] = val;
                         }
@@ -907,9 +940,18 @@ int main(int argc, char **argv) {
                         printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                     }
                 } else if(enteredChar == 9) {
-                    appendChars(newFileString, "\t", newFileStrOffset+1);
-                    refreshDisplay(UPDATE);
+                    appendChars(newFileString, " ", newFileStrOffset+1);
                     rightArrow(enteredChar);
+                    appendChars(newFileString, " ", newFileStrOffset+1);
+                    rightArrow(enteredChar);
+                    appendChars(newFileString, " ", newFileStrOffset+1);
+                    rightArrow(enteredChar);
+                    appendChars(newFileString, " ", newFileStrOffset+1);
+                    rightArrow(enteredChar);
+                    //rightArrow(enteredChar);
+                    //++editingCursorPositionX;
+                    refreshDisplay(UPDATE);
+                    printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 }
             }
             lastlastEnteredChar = lastEnteredChar;
