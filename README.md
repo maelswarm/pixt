@@ -1,11 +1,17 @@
 # pixt
 A cli text editor for on-the-go.
 
+## Feature Request
+
+If you want a new feature please open a issue on this repository.
+
 ## Hot Keys
 
 ### Browser Mode
 
 Ctrl-N : Creates an empty file in the current directory and enteres editing mode.
+
+##
 
 Use the arrow keys to navigate your directories.
 
@@ -20,3 +26,7 @@ After previewing the file -- hit enter to edit the file.
 Ctrl-O : Enter Save Prompt.
 
 Ctrl-X : Exit editor (return to Browser Mode).
+
+Ctrl-Y : Page Up.
+
+Ctrl-V : Page Down.
