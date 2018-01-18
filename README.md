@@ -2,6 +2,8 @@
 
 A stripped down text-editor that features a browser navigator for quicker directory traversal.
 
+<p align="center"><img src="https://i.imgur.com/z1HltyA.png"/></p>
+
 ## Feature Request
 
 If you want a new feature please open a issue on this repository.
