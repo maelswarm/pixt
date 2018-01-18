@@ -1,6 +1,8 @@
 # pixt
 A cli text editor for on-the-go.
 
+Pixt is a stripped down text-editor that features a browser navigator for quicker directory traversal.
+
 ## Feature Request
 
 If you want a new feature please open a issue on this repository.
