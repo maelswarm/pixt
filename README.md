@@ -1,6 +1,6 @@
 # pixt
 
-A stripped down text-editor that features a browser navigator for quicker directory traversal.
+A stripped down text-editor that features a directory navigator for quicker traversal.
 
 <p align="center"><img src="https://i.imgur.com/z1HltyA.png"/></p>
 
