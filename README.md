@@ -12,6 +12,8 @@ If you want a new feature please open a issue on this repository.
 
 Ctrl-N : Creates an empty file in the current directory and enteres editing mode.
 
+ESC->Enter : Quit.
+
 ##
 
 Use the arrow keys to navigate your directories.
@@ -31,3 +33,5 @@ Ctrl-X : Exit editor (return to Browser Mode).
 Ctrl-Y : Page Up.
 
 Ctrl-V : Page Down.
+
+ESC->Enter : Quit.
