@@ -92,6 +92,7 @@ void analyzeDirectory() {
         }
         ++directoryHeight;
     }
+    --directoryHeight;
     rewinddir(pDir);
     
     numOfPagesNav = (directoryHeight/winsize.ws_row) + 1;
@@ -126,10 +127,6 @@ void refreshDisplay(int type) {
     if(cooked) {
         rowOffset = 2;
     }
-    
-    //    if(fp != NULL) {
-    //        rewind(fp);
-    //    }
     
     if(!editing) {
         int newLineFlag = 0;
@@ -281,7 +278,7 @@ void downArrow(int enteredValue) {
             if (newFileString[newFileStrOffset] == '\t') {
                 i+=4;
             } else {
-                i++;
+                ++i;
             }
             ++newFileStrOffset;
         }
@@ -326,7 +323,7 @@ void downArrow(int enteredValue) {
                     q+=3;
                 }
                 ++q;
-                p++;
+                ++p;
             }
             editingPageOffset += (p+1);
             refreshDisplay(UPDATE);
@@ -342,10 +339,13 @@ void upArrow(int enteredValue) {
         }
         --cursorPosition;
         if(cursorPosition < 0) {
-            cursorPosition = contentCount - 1;
+            cursorPosition = winsize.ws_row - 1;
             --currPage;
             if(currPage < 0) {
                 currPage = numOfPagesNav - 1;
+                if(currPage != 0) {
+                    cursorPosition = (directoryHeight - 1)%winsize.ws_row;
+                }
             }
         }
         refreshDisplay(UPDATE);
@@ -364,8 +364,8 @@ void upArrow(int enteredValue) {
                         if(newFileString[editingPageOffset - i] == 9) {
                             j+=3;
                         }
-                        j++;
-                        i++;
+                        ++j;
+                        ++i;
                     }
                     
                     editingPageOffset -= winsize.ws_col;
@@ -377,7 +377,7 @@ void upArrow(int enteredValue) {
             if (newFileString[newFileStrOffset] == '\t') {
                 i+=4;
             } else {
-                i++;
+                ++i;
             }
             --newFileStrOffset;
         }
@@ -392,7 +392,7 @@ void upArrow(int enteredValue) {
                 wrapFlag = 1;
             }
             --newFileStrOffset;
-            i++;
+            ++i;
         }
         ++newFileStrOffset;
         
@@ -431,26 +431,26 @@ void upArrow(int enteredValue) {
                 i = 0;
                 int j = 0;
                 if(newFileString[editingPageOffset - j] == '\n') {
-                    j++;
-                    i++;
+                    ++j;
+                    ++i;
                 }
                 while(editingPageOffset - j > -1 && newFileString[editingPageOffset - j] != 10) {
                     if(newFileString[editingPageOffset - j] == 9) {
                         i+=3;
                     }
-                    j++;
-                    i++;
+                    ++j;
+                    ++i;
                 }
                 if(newFileString[editingPageOffset - j] == '\n') {
-                    j++;
-                    i++;
+                    ++j;
+                    ++i;
                 }
                 while(editingPageOffset - j > -1 && newFileString[editingPageOffset - j] != 10) {
                     if(newFileString[editingPageOffset - j] == 9) {
                         i+=3;
                     }
-                    j++;
-                    i++;
+                    ++j;
+                    ++i;
                 }
                 editingCursorPositionX = (i-1)%winsize.ws_col;
                 editingPageOffset-=editingCursorPositionX;
@@ -551,8 +551,8 @@ void rightArrow(int enteredValue) {
                             if(newFileString[newFileStrOffset + i] == 9) {
                                 i+=3;
                             }
-                            i++;
-                            editingPageOffset++;
+                            ++i;
+                            ++editingPageOffset;
                         }
                         editingCursorPositionX = 1;
                         --newFileStrOffset;
@@ -604,8 +604,8 @@ void leftArrow(enteredValue) {
                     if(newFileString[editingPageOffset - j] == 9) {
                         i+=3;
                     }
-                    i++;
-                    j++;
+                    ++i;
+                    ++j;
                 }
                 
                 --newFileStrOffset;
@@ -637,10 +637,10 @@ void leftArrow(enteredValue) {
                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2) {
                         if(newFileString[newFileStrOffset - i] == 9) {
                             cnt += 4;
-                            i++;
+                            ++i;
                         } else {
-                            cnt++;
-                            i++;
+                            ++cnt;
+                            ++i;
                         }
                     }
                     editingCursorPositionX = cnt;
@@ -740,7 +740,7 @@ int main(int argc, char **argv) {
     while ((enteredChar = fgetc(stdin)) != EOF && appRunning) {
         if(readyToRender) {
             //printf("%i\n", enteredChar);
-            if((lastEnteredChar == 27 && enteredChar == 13) || (lastEnteredChar == 27 && enteredChar == 10)) { //end app
+            if((lastEnteredChar == 27 && enteredChar == 13) || (lastEnteredChar == 27 && enteredChar == 10)) {
                 appRunning = 0;
                 break;
             }
@@ -881,13 +881,13 @@ int main(int argc, char **argv) {
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
 
             } else if(!cooked) {
-                if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 65) { //up
+                if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 65) {
                     upArrow(-1);
-                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 66) { //down
+                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 66) {
                     downArrow(-1);
-                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 67) { //right
+                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 67) {
                     rightArrow(-1);
-                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 68) { //left
+                } else if(lastlastEnteredChar == 27 && lastEnteredChar == 91 && enteredChar == 68) {
                     leftArrow(-1);
                 } else if(lastlastEnteredChar != 27 && lastEnteredChar != 27 && ((enteredChar > 31 && enteredChar < 127) || (enteredChar == 13))) {
                     if(enteredChar == 13) {enteredChar = '\n';}
@@ -938,9 +938,6 @@ int main(int argc, char **argv) {
                                     if(i == winsize.ws_col && newFileString[newFileStrOffset - i] != 10) {
                                         --newFileStrOffset;
                                     }
-//                                    if(newFileString[newFileStrOffset - i] == 10) {
-//                                        --newFileStrOffset;
-//                                    }
                                     removeChar(newFileString, newFileStrOffset);
                                     --newFileStrOffset;
                                 } else {
@@ -976,8 +973,6 @@ int main(int argc, char **argv) {
                     rightArrow(enteredChar);
                     appendChars(newFileString, " ", newFileStrOffset+1);
                     rightArrow(enteredChar);
-                    //rightArrow(enteredChar);
-                    //++editingCursorPositionX;
                     refreshDisplay(UPDATE);
                     printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 }
@@ -991,6 +986,7 @@ int main(int argc, char **argv) {
     fclose(fp);
     fclose(fpClone);
     system ("/bin/stty cooked");
+    printf("%s", ANSI_SHOW_CURSOR);
     closedir (pDir);
     free(consoleText);
     free(currCloneFilePath);
