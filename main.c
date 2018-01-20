@@ -361,9 +361,6 @@ void downArrow(int enteredValue) {
                     --editingCursorPositionY;
                     i = 0;
                     while(newFileString[editingPageOffset] != '\n' && newFileString[editingPageOffset] != '\0' && i < winsize.ws_col) {
-                        if (newFileString[editingPageOffset] == '\t') {
-                            i+=3;
-                        }
                         ++editingPageOffset;
                         ++i;
                     }
@@ -373,12 +370,7 @@ void downArrow(int enteredValue) {
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 return;
             }
-            
-            if (newFileString[newFileStrOffset] == '\t') {
-                i+=4;
-            } else {
-                ++i;
-            }
+            ++i;
             ++newFileStrOffset;
         }
         
@@ -399,9 +391,6 @@ void downArrow(int enteredValue) {
             i = 1;
             int j = 0;
             while(i < editingCursorPositionX && newFileString[newFileStrOffset] != '\0' && newFileString[newFileStrOffset] != '\n') {
-                if(newFileString[newFileStrOffset] == 9) {
-                    i += 3;
-                }
                 ++i;
                 ++j;
                 ++newFileStrOffset;
@@ -417,9 +406,6 @@ void downArrow(int enteredValue) {
             while(newFileString[editingPageOffset+q] != '\n' && newFileString[editingPageOffset+q] != '\0') {
                 if (q >= winsize.ws_col - 1) {
                     break;
-                }
-                if(newFileString[editingPageOffset+q] == 9) {
-                    q+=3;
                 }
                 ++q;
                 ++p;
@@ -460,9 +446,6 @@ void upArrow(int enteredValue) {
                     int j = 0;
                     i = 1;
                     while(editingPageOffset - i > -1 && newFileString[editingPageOffset-i] != 10) {
-                        if(newFileString[editingPageOffset - i] == 9) {
-                            j+=3;
-                        }
                         ++j;
                         ++i;
                     }
@@ -473,11 +456,7 @@ void upArrow(int enteredValue) {
                 printf("\033[%i;%iH", editingCursorPositionY, editingCursorPositionX);
                 return;
             }
-            if (newFileString[newFileStrOffset] == '\t') {
-                i+=4;
-            } else {
-                ++i;
-            }
+            ++i;
             --newFileStrOffset;
         }
         if(newFileString[newFileStrOffset] == '\n') {
@@ -534,9 +513,6 @@ void upArrow(int enteredValue) {
                     ++i;
                 }
                 while(editingPageOffset - j > -1 && newFileString[editingPageOffset - j] != 10) {
-                    if(newFileString[editingPageOffset - j] == 9) {
-                        i+=3;
-                    }
                     ++j;
                     ++i;
                 }
@@ -545,9 +521,6 @@ void upArrow(int enteredValue) {
                     ++i;
                 }
                 while(editingPageOffset - j > -1 && newFileString[editingPageOffset - j] != 10) {
-                    if(newFileString[editingPageOffset - j] == 9) {
-                        i+=3;
-                    }
                     ++j;
                     ++i;
                 }
@@ -573,13 +546,9 @@ void upArrow(int enteredValue) {
                 while(i < editingCursorPositionX) {
                     if(newFileString[editingPageOffset + j] == 10) {
                         break;
-                    } else if(newFileString[editingPageOffset + j] == 9) {
-                        i+=4;
-                        ++j;
-                    } else {
-                        ++i;
-                        ++j;
                     }
+                    ++i;
+                    ++j;
                 }
                 
                 editingCursorPositionX = i;
@@ -647,9 +616,6 @@ void rightArrow(int enteredValue) {
                     } else {
                         int i = 0;
                         while(newFileString[newFileStrOffset + i] != 10 && newFileString[newFileStrOffset + i] != '\0' && i<winsize.ws_col) {
-                            if(newFileString[newFileStrOffset + i] == 9) {
-                                i+=3;
-                            }
                             ++i;
                             ++editingPageOffset;
                         }
@@ -700,9 +666,6 @@ void leftArrow(enteredValue) {
                     --editingPageOffset;
                 }
                 while(newFileString[editingPageOffset - j] != 10 && editingPageOffset - j > -2) {
-                    if(newFileString[editingPageOffset - j] == 9) {
-                        i+=3;
-                    }
                     ++i;
                     ++j;
                 }
@@ -734,13 +697,8 @@ void leftArrow(enteredValue) {
                     int i = 1;
                     int cnt = 1;
                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2) {
-                        if(newFileString[newFileStrOffset - i] == 9) {
-                            cnt += 4;
-                            ++i;
-                        } else {
-                            ++cnt;
-                            ++i;
-                        }
+                        ++cnt;
+                        ++i;
                     }
                     editingCursorPositionX = cnt;
                     refreshDisplay(UPDATE);
@@ -749,9 +707,6 @@ void leftArrow(enteredValue) {
                     --newFileStrOffset;
                     int i = 0;
                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -1) {
-                        if(newFileString[newFileStrOffset - i] == 9) {
-                            i+=3;
-                        }
                         ++i;
                     }
                     editingCursorPositionX = (i+1)%winsize.ws_col;
@@ -762,9 +717,6 @@ void leftArrow(enteredValue) {
                 if(editingCursorPositionX <= 1) {
                     int i = 0;
                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -1 && i < winsize.ws_col) {
-                        if(newFileString[newFileStrOffset - i] == 9) {
-                            i+=3;
-                        }
                         ++i;
                     }
                     --editingCursorPositionY;
@@ -1018,9 +970,6 @@ int main(int argc, char **argv) {
                                 if(editingCursorPositionY <= 1) {
                                     int i = 0;
                                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2 && i<winsize.ws_col) {
-                                        if(newFileString[newFileStrOffset - i] == 9) {
-                                            i+=3;
-                                        }
                                         i++;
                                         --editingPageOffset;
                                     }
@@ -1034,9 +983,6 @@ int main(int argc, char **argv) {
                                     removeChar(newFileString, newFileStrOffset);
                                     int i = 0;
                                     while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2 && i<winsize.ws_col) {
-                                        if(newFileString[newFileStrOffset - i] == 9) {
-                                            i+=3;
-                                        }
                                         i++;
                                     }
                                     editingCursorPositionX = i;
