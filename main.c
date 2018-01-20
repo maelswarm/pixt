@@ -64,7 +64,7 @@ static int numOfPagesNav = 0;
 static int currPage = 0;
 
 void appendChars(char subject[], const char insert[], int pos) {
-    if(FILE_SIZE+strlen(insert) > FILE_SIZE) {
+    if(strlen(insert)+strlen(subject) > FILE_SIZE) {
         FILE_SIZE *= 2;
         newFileString = (char *)realloc(newFileString, FILE_SIZE);
     }
@@ -841,7 +841,7 @@ int main(int argc, char **argv) {
                     fseek(fp, 0L, SEEK_END);
                     int sizeFile = ftell(fp);
                     if(sizeFile > FILE_SIZE) {
-                        FILE_SIZE *= 2;
+                        FILE_SIZE = sizeFile * 2;
                         newFileString = (char *)realloc(newFileString, FILE_SIZE);
                     }
                     rewind(fp);
