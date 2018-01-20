@@ -15,16 +15,23 @@
 #include <signal.h>
 #include <dirent.h>
 #include <limits.h>
+#include <ctype.h>
 
 #define INIT 1
 #define UPDATE 2
 
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_RESET   "\x1b[0m"
+#define ANSI_COLOR_NORMAL  "\x1B[0m"
+#define ANSI_COLOR_RED  "\x1B[31m"
+#define ANSI_COLOR_GREEN   "\x1B[32m"
+#define ANSI_COLOR_YELLOW  "\x1B[33m"
+#define ANSI_COLOR_BLUE  "\x1B[34m"
+#define ANSI_COLOR_PURPLE  "\x1B[35m"
+#define ANSI_COLOR_CYAN  "\x1B[36m"
+#define ANSI_COLOR_WHITE  "\x1B[37m"
+
 #define ANSI_BLINK   "\x1b[5m"
 #define ANSI_HIDE_CURSOR "\e[?25l"
 #define ANSI_SHOW_CURSOR "\e[?25h"
-
 
 const int MAX_CONSOLE_TEXT = 10000;
 static int FILE_SIZE = 1000;
@@ -98,6 +105,94 @@ void analyzeDirectory() {
     numOfPagesNav = (directoryHeight/winsize.ws_row) + 1;
 }
 
+void processVal(char val, int *idx) {
+    int endIdx = *idx - 1;
+    while(newFileString[endIdx] != '\n' && newFileString[endIdx] != ' ' && newFileString[endIdx] != '(' && newFileString[endIdx] != ')' && newFileString[endIdx] != ';' && newFileString[endIdx] != '\0') {
+        endIdx++;
+    }
+    
+    if(*idx - 1 == endIdx) {
+        printf("%c", val);
+        return;
+    }
+    
+    char word[endIdx - *idx + 2];
+    memset(word, '\0', sizeof(word));
+    strncpy(word, &newFileString[*idx - 1], endIdx - *idx + 1);
+    if(strcmp(word, "int") == 0) {
+        printf("%sint%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 2;
+    } else if(strcmp(word, "char") == 0) {
+        printf("%schar%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 3;
+    } else if(strcmp(word, "if") == 0) {
+        printf("%sif%s", ANSI_COLOR_PURPLE, ANSI_COLOR_NORMAL);
+        (*idx) += 1;
+    } else if(strcmp(word, "else") == 0) {
+        printf("%selse%s", ANSI_COLOR_PURPLE, ANSI_COLOR_NORMAL);
+        (*idx) += 3;
+    } else if(strcmp(word, "switch") == 0) {
+        printf("%sswitch%s", ANSI_COLOR_PURPLE, ANSI_COLOR_NORMAL);
+        (*idx) += 5;
+    } else if(strcmp(word, "while") == 0) {
+        printf("%swhile%s", ANSI_COLOR_PURPLE, ANSI_COLOR_NORMAL);
+        (*idx) += 4;
+    } else if(strcmp(word, "long") == 0) {
+        printf("%slong%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 3;
+    } else if(strcmp(word, "short") == 0) {
+        printf("%sshort%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 4;
+    } else if(strcmp(word, "float") == 0) {
+        printf("%sfloat%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 4;
+    } else if(strcmp(word, "double") == 0) {
+        printf("%sdouble%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 5;
+    } else if(strcmp(word, "struct") == 0) {
+        printf("%sstruct%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 5;
+    } else if(strcmp(word, "enum") == 0) {
+        printf("%senum%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
+        (*idx) += 3;
+    } else if(strcmp(word, "return") == 0) {
+        printf("%sreturn%s", ANSI_COLOR_YELLOW, ANSI_COLOR_NORMAL);
+        (*idx) += 5;
+    } else {
+        
+        int notNumber = 0;
+        for(int i=0; i<strlen(word); i++) {
+            if(!isdigit(word[i])) {
+                notNumber = 1;
+                break;
+            }
+        }
+        if(!notNumber) {
+            printf("%s%s%s", ANSI_COLOR_RED, word, ANSI_COLOR_NORMAL);
+            (*idx) += (strlen(word) - 1);
+            return;
+        }
+        
+        int notAlnum = 0;
+        for(int i=0; i<strlen(word); i++) {
+            if(!isalnum(word[i])) {
+                notAlnum = 1;
+                break;
+            }
+        }
+        if(!notAlnum) {
+            if(newFileString[endIdx] == '(') {
+                printf("%s%s%s", ANSI_COLOR_CYAN, word, ANSI_COLOR_NORMAL);
+                (*idx) += (strlen(word) - 1);
+                return;
+            }
+        }
+        
+        printf("%s", word);
+        (*idx) += (strlen(word) - 1);
+    }
+}
+
 void refreshDisplay(int type) {
     contentCount = 0;
     readyToRender = 0;
@@ -144,7 +239,7 @@ void refreshDisplay(int type) {
             for(int w=0; w<winsize.ws_col; w++) {
                 if(w == 0) {
                     if(cursorPosition == h) {
-                        printf("%s>%s%s", ANSI_RESET, ANSI_RESET, ANSI_COLOR_GREEN);
+                        printf("%s>%s", ANSI_COLOR_GREEN, ANSI_COLOR_NORMAL);
                         selectedDirent = pDirent;
                     } else {
                         printf(" ");
@@ -194,7 +289,8 @@ void refreshDisplay(int type) {
             printf("\n");
         }
     } else {
-        int i = editingPageOffset;
+        int *i = (int *)malloc(sizeof(int));
+        *i = editingPageOffset;
         for(int h=0; h<winsize.ws_row - rowOffset; h++) {
             int newline = 0;
             int tabOccured = 0;
@@ -203,7 +299,7 @@ void refreshDisplay(int type) {
                 if(tabOccured || newline) {
                     printf(" ");
                 } else {
-                    if((val = newFileString[i++]) != '\0') {
+                    if((val = newFileString[(*i)++]) != '\0') {
                         if(val == 9) {
                             tabOccured = 4;
                             printf(" ");
@@ -211,7 +307,10 @@ void refreshDisplay(int type) {
                             newline = 1;
                             printf(" ");
                         } else {
-                            printf("%c", val);
+                            int pre = *i;
+                            processVal(val, i);
+                            int post = *i;
+                            w += (post - pre);
                         }
                     } else {
                         printf(" ");
@@ -220,10 +319,10 @@ void refreshDisplay(int type) {
                 if(tabOccured > 0) { --tabOccured;}
             }
         }
+        free(i);
     }
     rewind(stdout);
     printf("%s", ANSI_SHOW_CURSOR);
-    //ioctl(STDOUT_FILENO, TIOCGWINSZ, &winsize);
     readyToRender = 1;
 }
 
@@ -711,7 +810,6 @@ int main(int argc, char **argv) {
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &winsize);
     pthread_t windowSizeUpdateThread;
     pthread_create(&windowSizeUpdateThread, NULL, updateWindowSize, NULL);
-    printf(ANSI_COLOR_GREEN);
     system("/bin/stty raw");
     signal(SIGINT, cancelHandler);
     
@@ -906,17 +1004,9 @@ int main(int argc, char **argv) {
                                     leftArrow(-1);
                                     --editingCursorPositionX;
                                 } else {
-                                    --editingCursorPositionY;
                                     removeChar(newFileString, newFileStrOffset);
-                                    int i = 0;
-                                    while(newFileString[newFileStrOffset - i] != 10 && newFileStrOffset - i > -2 && i<winsize.ws_col) {
-                                        if(newFileString[newFileStrOffset - i] == 9) {
-                                            i+=3;
-                                        }
-                                        i++;
-                                    }
-                                    editingCursorPositionX = i;
-                                    --newFileStrOffset;
+                                    leftArrow(-1);
+                                    ++newFileStrOffset;
                                 }
                             }
                         } else if(newFileString[newFileStrOffset] == 9) {
@@ -982,7 +1072,7 @@ int main(int argc, char **argv) {
         }
     }
     
-    printf(ANSI_RESET);
+    printf(ANSI_COLOR_NORMAL);
     fclose(fp);
     fclose(fpClone);
     system ("/bin/stty cooked");
