@@ -2,7 +2,7 @@
 
 A stripped down cli text editor that features a directory navigator for quicker traversal.
 
-<p align="center"><img src="https://i.imgur.com/z1HltyA.png"/></p>
+<p align="center"><img src="https://i.imgur.com/8ux4rhh.png"/></p>
 
 ## Feature Request
 
